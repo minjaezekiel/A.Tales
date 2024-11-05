@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>View Post</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    .post {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+      padding: 20px;
+    }
+    .post-content {
+      border-bottom: 1px solid #e9ecef;
+      padding-bottom: 15px;
+      margin-bottom: 15px;
+    }
+    .report{ display: none}
+    .comments-section {
+      margin-top: 20px;
+      display: none;
+    }
+    .comment {
+      border-bottom: 1px solid #ccc;
+      padding: 10px 0;
+    }
+    .comment-form {
+      margin-top: 20px;
+    }
+    .comment-form textarea {
+      resize: none;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.5);
+    }
+    .modal-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .social-icons {
+      display: flex;
+      gap: 20px;
+      margin-top: 10px;
+    }
+    .social-icon i {
+      font-size: 25px;
+      color: #333;
+    }
+    .social-icon i:hover {
+      color: #007bff;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-body-tertiary">
+    <div class="container">
+      <a class="navbar-brand me-2" href="homepage.html">
+        <i class="bi bi-journal-bookmark"></i> A.Tales
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarButtonsExample" aria-controls="navbarButtonsExample" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarButtonsExample">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item">
+            <a class="nav-link" href="homepage.html">
+              <i class="bi bi-house-door"></i> Home
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="profile.html">
+              <i class="bi bi-person"></i> Profile
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="chat.html">
+              <i class="bi bi-chat-dots"></i> Chat
+            </a>
+          </li><!--
+          <li class="nav-item">
+            <a class="nav-link" href="#">
+              <i class="bi bi-bell"></i> Notifications
+            </a>
+          </li>-->
+        </ul>
+        <div class="d-flex align-items-center">
+          <span id="user-name" class="me-3"></span>
+          <button id="logout" type="button" class="btn btn-danger">
+            <i class="bi bi-box-arrow-right"></i> Logout
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container mt-4">
+    <div id="post-container" class="post">
+      <!-- Post will be rendered here by JavaScript -->
+    </div>
+    
+    <div id="comments-container" class="comments-section">
+      <h4>Comments</h4>
+      <div id="comments-list"></div>
+
+      <!-- Comment Form -->
+      <div class="comment-form">
+        <h5>Add a Comment</h5>
+        <textarea id="comment-input" class="form-control" rows="3" placeholder="Write your comment here..."></textarea>
+        <i id="submit-comment" class="fas fa-pencil-alt" style="cursor: pointer;"></i> Submit
+      </div>
+    </div>
+  </div>
+
+  <!-- Share modal (hidden initially) -->
+  <div id="share-modal" class="modal">
+    <div class="modal-content">
+      <h3>Share this post</h3>
+      <div class="social-icons">
+        <a href="#" id="share-whatsapp" class="social-icon" target="_blank">
+          <i class="fab fa-whatsapp"></i>
+        </a>
+        <a href="#" id="share-facebook" class="social-icon" target="_blank">
+          <i class="fab fa-facebook"></i>
+        </a>
+        <a href="#" id="share-twitter" class="social-icon" target="_blank">
+          <i class="fab fa-x-twitter"></i>
+        </a>
+        <a href="#" id="share-other" class="social-icon" target="_blank">
+          <i class="fas fa-ellipsis-h"></i> <!-- Other social networks icon -->
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function getPostIdFromURL() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('id');
+    }
+
+    const token = localStorage.getItem('authToken');
+
+    // Function to decode JWT token
+    function parseJwt(token) {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      return JSON.parse(atob(base64));
+    }
+
+    if (token) {
+      window.onload = async () => {
+        const postId = getPostIdFromURL();
+        const userData = parseJwt(token);
+
+        if (!postId) {
+          alert("No post ID found!");
+          window.location.href = 'homepage.html';
+          return;
+        }
+
+        try {
+          const response = await fetch(`posts/${postId}`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (!response.ok) {
+            const errorMessage = await response.text();
+            throw new Error("Failed to fetch the post");
+          }
+
+          const post = await response.json();
+          const postContainer = document.getElementById('post-container');
+          handleLike(`${post.id}`)
+          // Populate the HTML with post details
+          postContainer.innerHTML = `
+            <div class="post-content">
+              <h2>${post.User.username}</h2>
+              <p class="post-text">${post.content}</p>
+              <div class="post-date">${new Date(post.createdAt).toLocaleString()}</div>
+              <div >Likes: <span id='like-count'></span></div>
+              <div class="report">Reports: ${post.reportCount}</div>
+              <i id="comment-toggle" class="fas fa-comments" style="cursor: pointer;"></i>
+              <i class="fas fa-share-alt" id="share-btn" style="cursor: pointer;"></i>
+            </div>
+          `;
+
+          // Add event listener for comments toggle
+          document.getElementById('comment-toggle').addEventListener('click', async () => {
+            const commentsContainer = document.getElementById('comments-container');
+            const commentsList = document.getElementById('comments-list');
+
+            if (commentsContainer.style.display === "none" || commentsContainer.style.display === "") {
+              commentsContainer.style.display = "block";
+              const commentsResponse = await fetch(`/comments/${postId}`, {
+                method: 'GET',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                }
+              });
+
+              if (!commentsResponse.ok) {
+                const errorMessage = await commentsResponse.text();
+                throw new Error("Failed to fetch comments");
+              }
+
+              const comments = await commentsResponse.json();
+              function decorateText(text) {
+    return text.replace(/@(\w+)/g, '<a href="profile.html?username=$1" class="mention">@<span class="mention-text">$1</span></a>')
+               .replace(/#(\w+)/g, '<a href="#" class="hashtag">#$1</a>');
+  }
+
+  // Update this section in your comments list rendering logic
+  commentsList.innerHTML = comments.map(comment => `
+    <div class="comment">
+      <strong>${comment.User.username}</strong>: ${decorateText(comment.content)}
+      <div class="comment-date">${new Date(comment.createdAt).toLocaleString()}</div>
+    </div>
+  `).join('');
+            } else {
+              commentsContainer.style.display = "none";
+            }
+          });
+
+          // Add event listener for submitting a comment
+          document.getElementById('submit-comment').addEventListener('click', async () => {
+            const commentContent = document.getElementById('comment-input').value;
+
+            if (!commentContent) {
+              alert('Please enter a comment.');
+              return;
+            }
+            const userId = userData.id;
+
+            try {
+              const submitResponse = await fetch(`comments/${postId}/`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  userId,
+                  content: commentContent
+                })
+              });
+
+              if (!submitResponse.ok) {
+                const errorMessage = await submitResponse.text();
+                throw new Error("Failed to submit comment");
+              }
+              // Refresh comments after submitting
+              document.getElementById('comment-toggle').click();
+            } catch (err) {
+              alert(`Error: ${err.message}`);
+            }
+          });
+
+          // Add event listener for the share button
+          document.getElementById('share-btn').addEventListener('click', () => {
+            const shareModal = document.getElementById('share-modal');
+            shareModal.style.display = 'block';
+          });
+
+          // Close modal when clicking outside of it
+          window.addEventListener('click', (event) => {
+            const shareModal = document.getElementById('share-modal');
+            if (event.target === shareModal) {
+              shareModal.style.display = 'none';
+            }
+          });
+
+          // Add social media share links
+          const encodedUrl = encodeURIComponent(window.location.href);
+          document.getElementById('share-whatsapp').href = `https://api.whatsapp.com/send?text=${encodedUrl}`;
+          document.getElementById('share-facebook').href = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
+          document.getElementById('share-twitter').href = `https://twitter.com/intent/tweet?url=${encodedUrl}`;
+          document.getElementById('share-other').href = `mailto:?body=${encodedUrl}`;
+        } catch (err) {
+          alert(`Error: ${err.message}`);
+        }
+      };
+    } else {
+      alert("No valid token found!");
+      window.location.href = 'index.html';
+    }
+
+    document.getElementById("user-name").textContent = parseJwt(token).username;
+    document.getElementById("logout").addEventListener('click', () => {
+      localStorage.removeItem('authToken');
+      window.location.href = 'index.html';
+    });
+
+    /*async function handleLike(postId) {
+      try {
+        const response = await fetch(`posts/${postId}/like`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (response.ok) {
+          const updatedCounts = await response.json();
+          document.getElementById('like-count').textContent = updatedCounts.likeCount;
+        } else {
+          alert("Error liking post.");
+        }
+      } catch (err) {
+        alert(`Error: ${err.message}`);
+      }
+    }
+    */
+
+    async function handleLike(postId) {
+    try {
+      
+       //alert(`posts id -${postId } `)
+        const response = await fetch(`../likes/posts/${postId}/`, { // Use the correct endpoint
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json(); // Get the data from the response
+            //const likeListElement = document.querySelector(`.like-list-${postId}`);
+            document.getElementById('like-count').textContent = data.likeCount;
+            
+        }
+             else {
+            console.error('Error fetching likes:', response.statusText);
+        }
+    } catch (error) {
+        console.error('Error fetching likes:', error);
+    }
+}
+
+    async function handleReport(postId) {
+      try {
+        const response = await fetch(`posts/${postId}/report`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (response.ok) {
+          const updatedCounts = await response.json();
+          document.getElementById('report-count').textContent = updatedCounts.reportCount;
+        } else {
+          alert("Error reporting post.");
+        }
+      } catch (err) {
+        alert(`Error: ${err.message}`);
+      }
+    }
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+alert(email+"       "+password)
+// If not OK, throw an error to handle it in the catch block
+const errorData = await response.json();
+throw new Error(errorData.error || 'Login failed. Please try again.'); // Provide a default error message

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/chart.js" rel="stylesheet">
+    <style>
+        table,tr,th,td{
+border:1px solid black;
+border-collapse:collapse;
+        }
+        body {
+            display: flex;
+        }
+        .sidebar {
+            min-height: 100vh;
+            background-color: #f8f9fa;
+        }
+        .content {
+            flex-grow: 1;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar">
+        <div class="container-fluid">
+            <h2 class="text-center mt-3">Admin Panel</h2>
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link" href="#" id="dashboard-link">Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" id="user-management-link">User Management</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" id="profile-management-link">Profile Management</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" id="post-management-link">Post Management</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <div class="content">
+        <h1 class="text-center">Admin Dashboard</h1>
+        <div class="container mt-5">
+            <!-- Active Users Counter -->
+            <div class="row">
+                <div class="col-md-6">
+                    <h2>Active Users</h2>
+                    <p id="active-users-count">Loading...</p>
+                </div>
+                <div class="col-md-6">
+                    <canvas id="activeUsersChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+            <!-- Other content will be dynamically loaded here -->
+            <div id="dynamic-content">
+                <table id="user_table">
+                <th><tr><td>id</td><td>first name</td><td>last name</td><td>email</td><td>is staff</td><td>is Verifed</td></tr></th>
+
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const userId = "logged-in-user-id"; // Replace with actual user id retrieval logic
+        const token = "user-jwt-token"; // Replace with actual token retrieval logic
+
+        // To keep track of user logins by date
+        const activeUsersData = {}; // To store the date and user count
+
+        // Function to fetch active users and update the chart
+        async function fetchActiveUsers() {
+            try {
+                const response = await fetch('/users'); // Adjust URL as necessary
+                const data = await response.json();
+                const activeUsersCount = data.length; // Assuming response is an array of users
+                document.getElementById('active-users-count').innerText = activeUsersCount;
+
+                // Get today's date in YYYY-MM-DD format
+                const today = new Date();
+                const dateKey = today.toISOString().split('T')[0]; // Get only the date part
+
+                // Update the active users data
+                if (!activeUsersData[dateKey]) {
+                    activeUsersData[dateKey] = 0; // Initialize if not present
+                }
+                activeUsersData[dateKey] += activeUsersCount; // Increment user count for the day
+
+                // Prepare data for the line chart
+                const labels = Object.keys(activeUsersData); // Dates
+                const userCounts = Object.values(activeUsersData); // Corresponding user counts
+
+                const ctx = document.getElementById('activeUsersChart').getContext('2d');
+                if (window.activeUsersChart) {
+                    window.activeUsersChart.destroy(); // Destroy the previous chart instance
+                }
+                window.activeUsersChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Active Users',
+                            data: userCounts,
+                            fill: false,
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            tension: 0.1,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Date'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Number of Active Users'
+                                },
+                                beginAtZero: true
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error fetching active users:', error);
+            }
+        }
+
+        // Fetch active users on page load
+        fetchActiveUsers();
+
+        // Event listeners for navigation links
+        document.getElementById('dashboard-link').addEventListener('click', function() {
+            document.getElementById('dynamic-content').innerHTML = '<h2>Dashboard Content Here</h2>';
+        });
+
+        document.getElementById('user-management-link').addEventListener('click', function() {
+            document.getElementById('dynamic-content').innerHTML = '<h2>User Management</h2>';
+            // Fetch and display users here
+            async function fetchUserData(){
+                try{
+                    const response = await fetch("../users", {
+                  method: 'GET',
+                  headers: {
+                    'Authorization': `Bearer ${token}`, // Pass the token for authentication
+                    'Content-Type': 'application/json'
+                  }
+                });
+                const user_data = await response.json();
+
+user_data.forEach(u=>{
+alert(u)
+
+
+
+
+})
+                }
+                catch(error)
+                {console.log({error:`Unable to fetch users`})}
+            }
+        });
+
+
+
+
+        document.getElementById('profile-management-link').addEventListener('click', function() {
+            document.getElementById('dynamic-content').innerHTML = '<h2>Profile Management</h2>';
+            // Fetch and display profiles here
+        });
+
+        document.getElementById('post-management-link').addEventListener('click', function() {
+            document.getElementById('dynamic-content').innerHTML = '<h2>Post Management</h2>';
+            // Fetch and display posts here
+        });
+    </script>
+</body>
+</html>

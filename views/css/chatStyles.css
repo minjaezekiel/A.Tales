@@ -1,0 +1,65 @@
+body, html {
+    height: 100%;
+    margin: 0;
+    font-family: Arial, sans-serif;
+}
+
+.container-fluid {
+    height: 100%;
+    padding: 0;
+}
+
+#users {
+    max-height: 70vh;
+}
+
+#messages {
+    padding-bottom: 10px;
+}
+
+.message {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: flex-start;
+}
+
+.incoming {
+    align-self: flex-start;
+}
+
+.private-message {
+    align-self: flex-end;
+    background-color: #cfe2ff; /* Your color for outgoing messages */
+}
+
+.message .emoji {
+    margin-right: 10px;
+}
+
+.message-content {
+    background-color: white;
+    border-radius: 10px;
+    padding: 10px;
+    max-width: 60%;
+}
+
+.message .sender-name {
+    font-weight: bold;
+}
+
+.message .timestamp {
+    font-size: 0.8em;
+    color: gray;
+    text-align: right;
+    display: block;
+    margin-top: 5px;
+}
+
+#chatWith {
+    margin: 0;
+}
+
+.input-group input {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}

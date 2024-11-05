@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>User Profile - Anonymous Tales</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+
+        .profile-header {
+            text-align: center;
+            padding: 20px;
+            background-color: #ffffff;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        .profile-header img {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .profile-header h2 {
+            margin-top: 15px;
+            font-size: 2rem;
+        }
+
+        .profile-header p {
+            color: #6c757d;
+            font-size: 1rem;
+        }
+
+        .profile-timeline {
+            background-color: #ffffff;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        .timeline-post {
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .timeline-post img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin-right: 15px;
+            object-fit: cover;
+        }
+
+        .timeline-post .post-content {
+            flex-grow: 1;
+        }
+
+        .timeline-post .post-author {
+            font-weight: bold;
+        }
+
+        .timeline-post .post-date {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+    </style>
+  </head>
+  <body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-body-tertiary">
+      <div class="container">
+        <a class="navbar-brand me-2" href="homepage.html">
+          <i class="bi bi-journal-bookmark"></i> A.Tales
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarButtonsExample" aria-controls="navbarButtonsExample" aria-expanded="false" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarButtonsExample">
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item">
+              <a class="nav-link" href="homepage.html">
+                <i class="bi bi-house-door"></i> Home
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="profile.html">
+                <i class="bi bi-person"></i> Profile
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="chat.html">
+                <i class="bi bi-chat-dots"></i> Chat
+              </a>
+            </li><!--
+            <li class="nav-item">
+              <a class="nav-link" href="#">
+                <i class="bi bi-bell"></i> Notifications
+              </a>
+            </li>-->
+          </ul>
+          <div class="d-flex align-items-center">
+            <span id="user-name" class="me-3"></span>
+            <button id="logout" type="button" class="btn btn-danger">
+              <i class="bi bi-box-arrow-right"></i> Logout
+            </button>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+   <!-- Profile Header Section -->
+<div class="container mt-4">
+  <div class="profile-header text-center">
+    <img src="img/user.jpg" alt="Profile Picture" class="rounded-circle">
+    <h2 id="user-fullname">John Doe</h2>
+    <p id="user-bio">This is a brief bio about the user. It can be longer and more detailed.</p>
+    
+    <!-- Button to open the modal -->
+    <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+      Edit Profile
+    </button>
+  </div>
+
+  <!-- Bootstrap Modal for editing profile -->
+  <div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editProfileModalLabel">Edit Profile</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="bio-input" class="form-label">Update Bio</label>
+            <textarea id="bio-input" class="form-control" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-primary" id="update-profile-button">Update Profile</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+      <!-- Timeline Section -->
+      <div class="profile-timeline">
+        <h3>My Posts</h3>
+        <div id="timeline-posts">
+          <!-- Timeline posts will be injected here by JavaScript -->
+        </div>
+      </div>
+    </div>
+
+    <footer class="text-center mt-4">
+      <p>&copy; 2024 AnonymousTales. All rights reserved.</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+    <script>
+        // Function to decode JWT token
+        function parseJwt(token) {
+          const base64Url = token.split('.')[1];
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          return JSON.parse(atob(base64));
+        }
+
+        // Retrieve the token from localStorage
+        const token = localStorage.getItem('authToken');
+
+        if (token) {
+          // Decode the token to get user data
+          const userData = parseJwt(token);
+          const userId = userData.id;
+
+          // Display the user's information in the profile header
+          document.getElementById('user-name').innerText = `Hi, ${userData.username}`;
+          document.getElementById('user-fullname').innerText = userData.fullname || userData.username;
+
+          // Fetch the user's profile data
+          async function fetchUserProfile() {
+            try {
+              const response = await fetch(`/profile/${userId}`, {
+                method: 'GET',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                }
+              });
+
+              const profile = await response.json();
+              document.getElementById('user-bio').innerText = profile.bio || "No bio available.";
+              document.getElementById('bio-input').value = profile.bio || "";
+            } catch (error) {
+              console.error('Error fetching profile:', error);
+            }
+          }
+
+          // Fetch posts created by the user
+          async function fetchUserPosts() {
+            try {
+              const userData = parseJwt(token);
+              const userId = userData.id;
+              const response = await fetch(`../posts/user/${userId}`, {
+                method: 'GET',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                }
+              });
+
+              const posts = await response.json();
+              
+              const postsContainer = document.getElementById('timeline-posts');
+              postsContainer.innerHTML = ''; // Clear container
+
+              // Loop through posts and create HTML for each post
+              posts.forEach(post => {
+                  const postElement = document.createElement('div');
+                  postElement.classList.add('timeline-post');
+                  postElement.innerHTML = `
+                      <div class="d-flex">
+                        <img src="img/user.jpg" alt="User Picture">
+                        <div class="post-content">
+                          <div class="post-author">${userData.username} <span class="post-date">- ${new Date(post.createdAt).toLocaleDateString()}</span></div>
+                          <p>${post.content}</p>
+                        </div>
+                      </div>
+                  `;
+                  postsContainer.appendChild(postElement);
+              });
+            } catch (error) {
+              console.error('Error fetching posts:', error);
+            }
+          }
+
+      // Handle profile update submission using the modal
+document.getElementById('update-profile-button').addEventListener('click', async () => {
+  const updatedBio = document.getElementById('bio-input').value;
+
+  try {
+    const userData = parseJwt(token);
+    const userId = userData.id
+    const response = await fetch(`/profile`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ userId,bio: updatedBio })
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      // Update the bio on the page
+      document.getElementById('user-bio').innerText = updatedBio;
+      alert('Profile updated successfully!');
+      // Close the modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('editProfileModal'));
+      modal.hide();
+    } else {
+      alert(`Error updating profile: ${result.message}`);
+    }
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    alert('An error occurred while updating your profile.');
+  }
+});
+
+
+            // Initialize profile page with user data
+            fetchUserProfile();
+            fetchUserPosts();
+        } else {
+          // Redirect to login page if not authenticated
+          window.location.href = '/login.html';
+        }
+
+        // Logout button functionality
+        document.getElementById('logout').addEventListener('click', () => {
+          localStorage.removeItem('authToken');
+          window.location.href = '/login.html';
+        });
+    </script>
+  </body>
+</html>
+
+           
