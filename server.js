@@ -1,5 +1,6 @@
   
 const express = require("express");
+const reloadWebsite = require("./helper/reloader.js")
 const commentRouter = require("./routes/commentRoute")
 const loginRouter = require("./routes/loginRoute");
 const likesRoute = require("./routes/likesRoute");
@@ -80,6 +81,8 @@ app.get('/', (req, res) => {
 });
 
 
+const interval = 30000; //interval of 30s 
+setInterval(reloadWebsite, interval); //ping server
 
 // Setup Socket.io
 setupSocket(server);

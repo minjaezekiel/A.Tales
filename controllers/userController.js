@@ -89,7 +89,7 @@ const transporter = nodemailer.createTransport({
 
         // Send OTP email
         const mailOptions = {
-            from: "ezekielminja@gmail.com",
+            from: "Anonymous Tales<ezekielminja@gmail.com>",
             to: email,
             subject: "Your OTP for verification",
             html:`<!DOCTYPE html>
