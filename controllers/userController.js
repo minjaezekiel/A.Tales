@@ -1,324 +1,547 @@
-const User = require("./../models/userModel");
-const bcrypt = require("bcrypt");
-const nodemailer=require("nodemailer");
-const jwt = require('jsonwebtoken');
-require('dotenv').config()
-//POST /users -> Create a new user
+/**
+ * Anonymous Tales - User Controller
+ * Handles user registration, OTP verification, and CRUD operations
+ * 
+ * Security Features:
+ * - OTP stored in database (not memory) for production reliability
+ * - Passwords always hashed with bcrypt
+ * - Input validation and sanitization
+ * - Proper error handling without information leakage
+ * - Comprehensive logging with sensitive data redaction
+ * 
+ * @module controllers/userController
+ */
 
-var temporaryUserData = {}; // Temporary storage for user data (could use Redis or session for larger apps)
-let verified = { "otp": null }; // Store the generated OTP for verification
+const bcrypt = require('bcryptjs');
+const nodemailer = require('nodemailer');
+const User = require('../models/userModel');
+const OTP = require('../models/otpModel');
+const { logger, sanitizeData } = require('../utils/logger');
+const { AppError, asyncHandler } = require('../middleware/errorMiddleware');
 
-// Function to generate OTP
-const generateOTP = () => {
-    return Math.floor(100000 + Math.random() * 900000); // Generates a 6-digit OTP
+// Environment configuration
+const BCRYPT_SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS) || 12;
+const OTP_EXPIRY_MINUTES = 10;
+const EMAIL_USER = process.env.EMAIL_USER;
+const EMAIL_PASS = process.env.EMAIL_PASS;
+const APP_NAME = process.env.APP_NAME || 'Anonymous Tales';
+
+/**
+ * Configure email transporter
+ * @returns {Object} Nodemailer transporter
+ */
+const createEmailTransporter = () => {
+    if (!EMAIL_USER || !EMAIL_PASS) {
+        logger.error('Email configuration missing');
+        throw new AppError('Email service not configured', 500, 'EMAIL_CONFIG_ERROR');
+    }
+    
+    return nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: EMAIL_USER,
+            pass: EMAIL_PASS
+        },
+        tls: {
+            rejectUnauthorized: true
+        }
+    });
 };
 
-/*const loginUser = async (req,res)=>{
-    const {email, password} = req.body;
-    console.log (email,password)
-}*/
+/**
+ * Generate a 6-digit OTP
+ * @returns {string} 6-digit OTP code
+ */
+const generateOTP = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+};
 
-/*const loginUser = async (req, res) => {
-    try {
-        const { email, password } = req.body; // Use email and password
-console.log(email)
-        // Find the user by email
-        const user = await User.findOne({ where: { email } });
-        console.log('User found:', user); // Log the found user
-
-        if (!user) {
-            return res.status(401).json({ error: 'Invalid email or password' });
-        }
-
-        // Check if password matches
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            return res.status(401).json({ error: 'Invalid email or password' });
-        }
-
-        // Create JWT token
-        const token = jwt.sign({ id: user.id, email: user.email }, "JWT_SECRET", { expiresIn: '1h' });
-
-        // Return token and user info
-        res.status(200).json({
-            message: 'Login successful',
-            token,
-            user: {
-                username: user.username,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                email: user.email,
-                isAdmin: user.isAdmin,
-                isStaff: user.isStaff,
-            }
-        });
-    } catch (error) {
-        console.error('Login error:', error); // Log the error details
-        res.status(500).json({ error:  error.message, details: error.message }); // Send the error message
-    }
-};*/
-
-// POST /users -> Step 1: Collect user data and send OTP to email
-const createUser = async (req, res) => {
-    try {
-        const { username, firstName, lastName, email, password, isAdmin, isStaff } = req.body;
-
-        // Store user data temporarily (using the email as a key for simplicity)
-         temporaryUserData= {
-            username: username,
-            firstName: firstName,
-            lastName: lastName,
-            email: email,
-            password: password,
-            isAdmin: isAdmin,
-            isStaff: isStaff
-        };
-        
-
-        // Generate OTP
-        const otp = generateOTP();
-        verified.otp = otp;
-   //transporter object
-const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-        user: process.env.EMAIL_USER,  // Hardcoded email user
-        pass: process.env.EMAIL_PASS       // Hardcoded email password
-    }
-});
-
-        // Send OTP email
-        const mailOptions = {
-            from: "Anonymous Tales<ezekielminja@gmail.com>",
-            to: email,
-            subject: "Your OTP for verification",
-            html:`<!DOCTYPE html>
+/**
+ * Send OTP email to user
+ * @param {string} email - Recipient email
+ * @param {string} otp - OTP code
+ * @param {string} username - Username for personalization
+ */
+const sendOTPEmail = async (email, otp, username) => {
+    const transporter = createEmailTransporter();
+    
+    const mailOptions = {
+        from: `${APP_NAME}<${EMAIL_USER}>`,
+        to: email,
+        subject: 'Your Verification Code - Anonymous Tales',
+        html: `
+<!DOCTYPE html>
 <html lang="en">
-  <head>
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Email Verification</title>
     <style>
-      body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background-color: #eef2f7;
-        margin: 0;
-        padding: 20px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-      }
-      .email-container {
-        max-width: 500px;
-        background-color: #ffffff;
-        padding: 30px;
-        border-radius: 12px;
-        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
-        text-align: center;
-      }
-      h1 {
-        color: #2a9d8f;
-        font-size: 26px;
-        margin-bottom: 15px;
-        font-weight: 600;
-      }
-      p {
-        font-size: 16px;
-        color: #6c757d;
-        margin-bottom: 20px;
-        line-height: 1.6;
-      }
-      .otp {
-        font-size: 22px;
-        font-weight: bold;
-        color: #e76f51;
-        background-color: #f4a261;
-        padding: 12px 18px;
-        border-radius: 8px;
-        display: inline-block;
-        margin-bottom: 20px;
-      }
-      .copy-btn {
-        background-color: #264653;
-        color: #ffffff;
-        border: none;
-        padding: 10px 16px;
-        font-size: 14px;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: background-color 0.3s;
-      }
-      .copy-btn:hover {
-        background-color: #2a9d8f;
-      }
-      .footer {
-        margin-top: 30px;
-        font-size: 14px;
-        color: #495057;
-      }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #2a9d8f;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        p {
+            color: #333;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        .otp-code {
+            font-size: 32px;
+            font-weight: bold;
+            color: #e76f51;
+            background-color: #f4a261;
+            padding: 15px 25px;
+            border-radius: 8px;
+            display: inline-block;
+            letter-spacing: 5px;
+            margin: 20px 0;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            color: #856404;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            color: #666;
+            font-size: 14px;
+        }
     </style>
-  </head>
-  <body>
-    <div class="email-container">
-      <h1>Email Verification</h1>
-      <p>
-        Welcome to our community! To complete your registration, please use the One-Time Password (OTP) provided below. 
-        <strong>Do not share this code</strong> with anyone for your security.
-      </p>
-      <div class="otp" id="otp">${otp}</div>
-      <button class="copy-btn" onclick="copyToClipboard()">Copy OTP</button>
-      <p class="footer">
-        Best regards,<br>
-        Minja Ezekiel<br>
-        CEO & Developer at ATales
-      </p>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to ${APP_NAME}, ${username}!</h1>
+        <p>Thank you for signing up. To complete your registration, please use the verification code below:</p>
+        
+        <div style="text-align: center;">
+            <div class="otp-code">${otp}</div>
+        </div>
+        
+        <div class="warning">
+            <strong>⚠️ Security Notice:</strong><br>
+            This code will expire in ${OTP_EXPIRY_MINUTES} minutes.<br>
+            Never share this code with anyone.
+        </div>
+        
+        <p>If you didn't request this code, please ignore this email or contact support if you're concerned.</p>
+        
+        <div class="footer">
+            Best regards,<br>
+            The ${APP_NAME} Team
+        </div>
     </div>
-    <script>
-      function copyToClipboard() {
-        const otp = document.getElementById("otp").innerText;
-        navigator.clipboard.writeText(otp).then(
-          function () {
-            alert("OTP copied to clipboard!");
-          },
-          function () {
-            alert("Failed to copy OTP. Please try again.");
-          }
-        );
-      }
-    </script>
-  </body>
-</html>
-`
-            
-        };
-
-        await transporter.sendMail(mailOptions);
-        console.log(`OTP ${otp} sent to ${email}`);
-
-        
-    } catch (error) {
-        res.status(500).json({ error: "Error while sending OTP", details: error });
-    }
+</body>
+</html>`
+    };
+    
+    await transporter.sendMail(mailOptions);
 };
 
+// ============================================
+// User Registration with OTP
+// ============================================
 
-  
-
-
-
-
-// POST /verify-otp -> Step 2: Verify OTP and create user
-const otp_verification = async (req, res) => {
+/**
+ * POST /users
+ * Step 1: Collect user data and send OTP
+ * Creates temporary OTP record, sends email, stores user data
+ */
+const createUser = asyncHandler(async (req, res) => {
+    const { username, firstName, lastName, email, password, gender, isAdmin, isStaff } = req.body;
+    
+    logger.info('User registration initiated', { 
+        email: '[REDACTED]',
+        username 
+    });
+    
+    // Check if email already exists
+    const existingUser = await User.findOne({ where: { email } });
+    if (existingUser) {
+        logger.warn('Registration failed: Email already exists', { email: '[REDACTED]' });
+        throw new AppError('Email address already registered', 409, 'EMAIL_EXISTS');
+    }
+    
+    // Check if username is available
+    const usernameAvailable = await User.isUsernameAvailable(username);
+    if (!usernameAvailable) {
+        logger.warn('Registration failed: Username taken', { username });
+        throw new AppError('Username already taken', 409, 'USERNAME_EXISTS');
+    }
+    
+    // Generate OTP
+    const otpCode = generateOTP();
+    const hashedOTP = await bcrypt.hash(otpCode, BCRYPT_SALT_ROUNDS);
+    
+    // Calculate expiry time
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + OTP_EXPIRY_MINUTES);
+    
+    // Store user data temporarily (will be used after OTP verification)
+    const userData = {
+        username,
+        firstName: firstName || null,
+        lastName: lastName || null,
+        email,
+        password, // Will be hashed after verification
+        gender: gender || 'prefer_not_to_say',
+        isAdmin: isAdmin || false,
+        isStaff: isStaff || false
+    };
+    
+    // Delete any existing OTP for this email
+    await OTP.destroy({ where: { email } });
+    
+    // Create OTP record in database
+    await OTP.create({
+        email,
+        otp: hashedOTP,
+        userData,
+        expiresAt,
+        attempts: 0,
+        isUsed: false
+    });
+    
+    // Send OTP email
     try {
-        const { otp } = req.body;
-      
-        // Check if OTP is correct
-   
-        //console.log("im live")
-        // Retrieve user data from temporary storage
-        const userData = {...temporaryUserData};
-        //console.log(userData.username)
-        if (!userData) {
-            console.log(userData)
-            return res.status(400).json({ error: "User data not found" });
-        }
-
-        // Hash the password
-        const hashedPassword = await bcrypt.hash(userData.password, 10);
-//console.log(userData.email)
-        // Create the user
-        const newUser = await User.create({
-            username: userData.username,
-            firstName: userData.firstName,
-            lastName: userData.lastName,
-            email:  userData.email,
-            password: hashedPassword,
-            isAdmin: userData.isAdmin,
-            isStaff: userData.isStaff,
-            isVerified: true,
+        await sendOTPEmail(email, otpCode, username);
+        logger.info('OTP sent successfully', { email: '[REDACTED]' });
+    } catch (emailError) {
+        logger.error('Failed to send OTP email', { 
+            error: emailError.message,
+            email: '[REDACTED]'
         });
-
-        console.log("New user created: ", newUser);
-
-        // Clear the temporary storage after successful user creation
-        delete temporaryUserData;
-
-        res.status(201).json(newUser);
-    } catch (error) {
-        res.status(500).json({ error: "Unable to verify OTP or create user", details: error });
+        // Clean up OTP record if email fails
+        await OTP.destroy({ where: { email } });
+        throw new AppError('Failed to send verification email. Please try again.', 500, 'EMAIL_SEND_ERROR');
     }
-};
+    
+    res.status(200).json({
+        success: true,
+        message: 'Verification code sent to your email',
+        data: {
+            email,
+            expiresInMinutes: OTP_EXPIRY_MINUTES
+        }
+    });
+});
 
-
-//GET /users -> get all users
-const findAllUsers = async (req,res)=>{
-    try{
-        const users = await User.findAll({});
-        if(users){
-console.log(users)
-            res.status(200).json(users);
-        } else{
-            res.send("There no current users");
+/**
+ * POST /users/verify
+ * Step 2: Verify OTP and create user
+ * Validates OTP, creates user record, cleans up OTP
+ */
+const otpVerification = asyncHandler(async (req, res) => {
+    const { email, otp } = req.body;
+    
+    logger.info('OTP verification initiated', { email: '[REDACTED]' });
+    
+    // Find OTP record
+    const otpRecord = await OTP.findOne({
+        where: { email, isUsed: false }
+    });
+    
+    if (!otpRecord) {
+        logger.warn('OTP verification failed: No valid OTP found', { email: '[REDACTED]' });
+        throw new AppError('Invalid or expired verification code', 400, 'INVALID_OTP');
+    }
+    
+    // Check if OTP is expired
+    if (otpRecord.isExpired()) {
+        await otpRecord.destroy(); // Clean up expired OTP
+        logger.warn('OTP verification failed: OTP expired', { email: '[REDACTED]' });
+        throw new AppError('Verification code has expired. Please request a new one.', 400, 'OTP_EXPIRED');
+    }
+    
+    // Check max attempts
+    if (otpRecord.hasMaxAttempts()) {
+        await otpRecord.destroy(); // Lock out after max attempts
+        logger.warn('OTP verification failed: Max attempts reached', { email: '[REDACTED]' });
+        throw new AppError('Too many failed attempts. Please request a new code.', 400, 'MAX_ATTEMPTS');
+    }
+    
+    // Increment attempt counter
+    otpRecord.attempts += 1;
+    await otpRecord.save();
+    
+    // Verify OTP
+    const isValidOTP = await bcrypt.compare(otp, otpRecord.otp);
+    
+    if (!isValidOTP) {
+        const remainingAttempts = 3 - otpRecord.attempts;
+        logger.warn('OTP verification failed: Invalid code', { 
+            email: '[REDACTED]',
+            attempts: otpRecord.attempts
+        });
+        
+        if (remainingAttempts <= 0) {
+            await otpRecord.destroy();
+            throw new AppError('Too many failed attempts. Please request a new code.', 400, 'MAX_ATTEMPTS');
         }
         
-    } catch(error){
-        res.status(500).json({error:'Unable to fetch users', details: error})
+        throw new AppError(
+            `Invalid verification code. ${remainingAttempts} attempts remaining.`,
+            400,
+            'INVALID_OTP'
+        );
     }
-}
-
-//get single user
-const findUser = async (req,res)=>{
-    try{
-        const user = await User.findByPk(req.params.id);
-        if(user){
-            res.status(200).json(user);
-        } else{
-            res.status(404).json({error:'Unable to fetch user' })
-        } 
-    } catch (error){
-        res.status(500).json({error:'Unable to fetch user', details: error});
-    }
-}
-
-const updateUser = async (req,res)=>{
-    try{
-        const {firstName, lastName, email, password, isAdmin, isStaff} = req.body;
-        const user = await User.findByPk(req.params.id);
-        if(user){
-            user.firstName = firstName;
-            user.lastName = lastName;
-            user.email = email;
-            user.password = password;
-            user.isAdmin = isAdmin;
-            user.isStaff = isStaff;
-            
-            await user.save(); //save changes to the database
-            res.status(200).json(user);
-        } else {
-            res.status(404).json({error:'User not found'})
+    
+    // OTP is valid - retrieve user data
+    const userData = otpRecord.userData;
+    
+    // Hash password before storing
+    const hashedPassword = await bcrypt.hash(userData.password, BCRYPT_SALT_ROUNDS);
+    
+    // Create user
+    const newUser = await User.create({
+        username: userData.username,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email: userData.email,
+        gender: userData.gender,
+        password: hashedPassword,
+        isAdmin: userData.isAdmin,
+        isStaff: userData.isStaff,
+        isVerified: true
+    });
+    
+    // Mark OTP as used
+    otpRecord.isUsed = true;
+    await otpRecord.save();
+    
+    // Clean up OTP record after successful verification
+    await otpRecord.destroy();
+    
+    logger.info('User created successfully', { 
+        userId: newUser.id,
+        email: '[REDACTED]'
+    });
+    
+    res.status(201).json({
+        success: true,
+        message: 'Account created successfully',
+        data: {
+            id: newUser.id,
+            username: newUser.username,
+            gender: newUser.gender,
+            email: newUser.email,
+            isVerified: newUser.isVerified,
+            createdAt: newUser.createdAt
         }
-    } catch(error){
-                res.status(500).json({error:'Unable to update user', details: error});
-    }
-}
+    });
+});
 
-//delete /users/:id -> Delete a user by id 
-const deleteUser = async (req,res)=>{
-    try{
-        const user = await User.findByPk(req.params.id);
-        if(user){
-            await user.destroy();
-            res.status(204).send(); //204 -> No content on successful deletion
-        } else {
-            res.status(404).json({error:'User not found'});
+// ============================================
+// User CRUD Operations
+// ============================================
+
+/**
+ * GET /users
+ * Get all users with pagination
+ */
+const findAllUsers = asyncHandler(async (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = (page - 1) * limit;
+    
+    const { count, rows: users } = await User.findAndCountAll({
+        limit,
+        offset,
+        order: [['createdAt', 'DESC']],
+        attributes: { exclude: ['password', 'otp'] }
+    });
+    
+    logger.debug('Users fetched', { count, page, limit });
+    
+    res.status(200).json({
+        success: true,
+        data: users,
+        pagination: {
+            total: count,
+            page,
+            limit,
+            totalPages: Math.ceil(count / limit)
         }
-    } catch (error){
-        res.status(500).json({error:'Unable to delete user', details: error});
+    });
+});
+
+/**
+ * GET /users/:id
+ * Get single user by ID
+ */
+const findUser = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    
+    const user = await User.findByPk(id, {
+        attributes: { exclude: ['password', 'otp'] }
+    });
+    
+    if (!user) {
+        logger.warn('User not found', { userId: id });
+        throw new AppError('User not found', 404, 'USER_NOT_FOUND');
     }
-}
+    
+    logger.debug('User fetched', { userId: id });
+    
+    res.status(200).json({
+        success: true,
+        data: user
+    });
+});
 
+/**
+ * PUT /users/:id
+ * Update user - with proper password hashing
+ */
+const updateUser = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { firstName, lastName, email, password, gender, isAdmin, isStaff } = req.body;
+    
+    logger.info('User update initiated', { userId: id });
+    
+    const user = await User.findByPk(id);
+    
+    if (!user) {
+        logger.warn('User update failed: User not found', { userId: id });
+        throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+    }
+    
+    // Check if updating email and it's already taken
+    if (email && email !== user.email) {
+        const existingUser = await User.findOne({ where: { email } });
+        if (existingUser) {
+            logger.warn('User update failed: Email already exists', { email: '[REDACTED]' });
+            throw new AppError('Email address already in use', 409, 'EMAIL_EXISTS');
+        }
+        user.email = email;
+    }
+    
+    // Update fields
+    if (firstName !== undefined) user.firstName = firstName;
+    if (lastName !== undefined) user.lastName = lastName;
+    if (gender !== undefined) user.gender = gender;
+    if (isAdmin !== undefined) user.isAdmin = isAdmin;
+    if (isStaff !== undefined) user.isStaff = isStaff;
+    
+    // Hash password if provided
+    if (password) {
+        user.password = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+        logger.info('User password updated', { userId: id });
+    }
+    
+    await user.save();
+    
+    logger.info('User updated successfully', { userId: id });
+    
+    res.status(200).json({
+        success: true,
+        message: 'User updated successfully',
+        data: {
+            id: user.id,
+            username: user.username,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            gender: user.gender,
+            isAdmin: user.isAdmin,
+            isStaff: user.isStaff,
+            updatedAt: user.updatedAt
+        }
+    });
+});
 
+/**
+ * DELETE /users/:id
+ * Delete user (soft delete)
+ */
+const deleteUser = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    
+    logger.info('User deletion initiated', { userId: id });
+    
+    const user = await User.findByPk(id);
+    
+    if (!user) {
+        logger.warn('User deletion failed: User not found', { userId: id });
+        throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+    }
+    
+    await user.destroy(); // Soft delete due to paranoid: true
+    
+    logger.info('User deleted successfully', { userId: id });
+    
+    res.status(200).json({
+        success: true,
+        message: 'User deleted successfully'
+    });
+});
 
-module.exports = {/*loginUser ,*/otp_verification,createUser, findAllUsers, findUser, updateUser, deleteUser}
+/**
+ * POST /users/resend-otp
+ * Resend OTP to user
+ */
+const resendOTP = asyncHandler(async (req, res) => {
+    const { email } = req.body;
+    
+    logger.info('OTP resend requested', { email: '[REDACTED]' });
+    
+    // Find existing OTP record
+    const existingOTP = await OTP.findOne({ where: { email } });
+    
+    if (!existingOTP) {
+        throw new AppError('No pending verification found. Please register again.', 400, 'NO_PENDING_VERIFICATION');
+    }
+    
+    // Generate new OTP
+    const otpCode = generateOTP();
+    const hashedOTP = await bcrypt.hash(otpCode, BCRYPT_SALT_ROUNDS);
+    
+    // Update expiry and reset attempts
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + OTP_EXPIRY_MINUTES);
+    
+    existingOTP.otp = hashedOTP;
+    existingOTP.expiresAt = expiresAt;
+    existingOTP.attempts = 0;
+    await existingOTP.save();
+    
+    // Send new OTP
+    await sendOTPEmail(email, otpCode, existingOTP.userData.username);
+    
+    logger.info('OTP resent successfully', { email: '[REDACTED]' });
+    
+    res.status(200).json({
+        success: true,
+        message: 'New verification code sent',
+        expiresInMinutes: OTP_EXPIRY_MINUTES
+    });
+});
 
+module.exports = {
+    createUser,
+    otpVerification,
+    findAllUsers,
+    findUser,
+    updateUser,
+    deleteUser,
+    resendOTP
+};

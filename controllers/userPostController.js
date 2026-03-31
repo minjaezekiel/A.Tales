@@ -1,167 +1,348 @@
-// controllers/userPostController.js
+/**
+ * Anonymous Tales - User Post Controller
+ * Handles post creation, retrieval, and management
+ * 
+ * Security Note: All database queries use Sequelize's parameterized queries
+ * to prevent SQL injection attacks. Raw SQL is avoided.
+ */
+
+const { Op } = require('sequelize');
 const UserPost = require('../models/post');
-const sequelize = require('./../config/dbConf');
 const User = require('../models/userModel');
+const Report = require('../models/postReport');
+const Like = require('../models/postLikes');
+const { logger } = require('../utils/logger');
+const { AppError, asyncHandler } = require('../middleware/errorMiddleware');
 
-// Create a new post
-const createPost = async (req, res) => {
-    try {
-        const { userId, content } = req.body;
+// ============================================
+// Create Post
+// ============================================
 
-        // Validate content
-        if (!content || content.trim() === '') {
-            return res.status(400).json({ message: 'Content cannot be empty' });
-        }
+/**
+ * POST /posts
+ * Create a new post with content validation
+ */
+const createPost = asyncHandler(async (req, res) => {
+    const { userId, content } = req.body;
 
-        // Check if user exists
-        const user = await User.findByPk(userId);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
+    logger.info('Creating new post', { userId });
 
-        // Create post
-        const post = await UserPost.create({
-            userId: user.id,
-            content:content,
-            like: false,
-        });
-
-        // Respond with the newly created post
-        return res.status(201).json({
-            message: 'Post created successfully',
-            post: post,
-        });
-    } catch (error) {
-        console.error('Error creating post:', error);
-        return res.status(500).json({ message: 'Server error' });
+    // Validate content
+    if (!content || content.trim().length === 0) {
+        throw new AppError('Post content cannot be empty', 400, 'EMPTY_CONTENT');
     }
-};
 
+    if (content.length > 5000) {
+        throw new AppError('Post content cannot exceed 5000 characters', 400, 'CONTENT_TOO_LONG');
+    }
 
-// Get all posts
-const getAllPosts = async (req, res) => {
-    try {
-        const posts = await UserPost.findAll({
-            include: {
+    // Check if user exists
+    const user = await User.findByPk(userId);
+    if (!user) {
+        throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+    }
+
+    // Create post
+    const post = await UserPost.create({
+        userId: user.id,
+        content: content.trim(),
+        like: false
+    });
+
+    // Fetch created post with user data
+    const postWithUser = await UserPost.findByPk(post.id, {
+        include: {
+            model: User,
+            attributes: ['id', 'username', 'gender']
+        }
+    });
+
+    logger.info('Post created successfully', { postId: post.id, userId });
+
+    res.status(201).json({
+        success: true,
+        message: 'Post created successfully',
+        data: postWithUser
+    });
+});
+
+// ============================================
+// Get All Posts (with pagination)
+// ============================================
+
+/**
+ * GET /posts
+ * Get all posts with pagination and optional filtering
+ */
+const getAllPosts = asyncHandler(async (req, res) => {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = (page - 1) * limit;
+
+    logger.debug('Fetching posts', { page, limit });
+
+    const { count, rows: posts } = await UserPost.findAndCountAll({
+        include: {
+            model: User,
+            attributes: ['id', 'username', 'gender']
+        },
+        order: [['createdAt', 'DESC']],
+        limit,
+        offset
+    });
+
+    res.status(200).json({
+        success: true,
+        data: posts,
+        pagination: {
+            total: count,
+            page,
+            limit,
+            totalPages: Math.ceil(count / limit)
+        }
+    });
+});
+
+// ============================================
+// Get Single Post by ID
+// ============================================
+
+/**
+ * GET /posts/:postId
+ * Get a single post with report count and like count
+ * Uses Sequelize associations instead of raw SQL to prevent injection
+ */
+const getPostById = asyncHandler(async (req, res) => {
+    const { postId } = req.params;
+
+    logger.debug('Fetching post by ID', { postId });
+
+    // Find the post by ID
+    const post = await UserPost.findByPk(postId, {
+        include: [
+            {
                 model: User,
-                attributes: ['username'], // Only return the username
+                attributes: ['id', 'username', 'gender']
             },
-            attributes: ['id','createdAt', 'content'], // Only return the timestamp and content
-        });
-
-        return res.status(200).json(posts);
-    } catch (error) {
-        console.error('Error fetching posts:', error);
-        return res.status(500).json({ message: 'Server error' });
-    }
-};
-// Get single post by ID
-const getPostById = async (req, res) => {
-    try {
-        const { postId } = req.params; // Retrieve postId from the request parameters
-        
-
-        // Find the post by ID
-        const post = await UserPost.findOne({
-            where: { id: postId },
-            include: {
-                model: User,
-                attributes: ['username'], // Return the username
+            {
+                model: Report,
+                attributes: ['id'] // Only fetch IDs to count
             },
-            attributes: ['id', 
-                'createdAt', 
-                'content', 
-                [sequelize.literal('(SELECT COUNT(*) FROM "Reports" WHERE "postId" = "UserPost"."id")'), 'reportCount'],
-                [sequelize.literal('(SELECT COUNT(*) FROM "UserPosts" WHERE "id" = "UserPost"."id" AND "like" = true)'), 'likeCount']
-            ], // Return post-specific fields
-        });
+            {
+                model: Like,
+                attributes: ['id'] // Only fetch IDs to count
+            }
+        ]
+    });
 
-        // Check if the post exists
-        if (!post) {
-            return res.status(404).json({ message: 'Post not found' });
-        }
-
-        // Respond with the post data
-        return res.status(200).json(post);
-    } catch (error) {
-        console.error('Error fetching post:', error);
-        return res.status(500).json({ message: 'Server error' });
+    if (!post) {
+        throw new AppError('Post not found', 404, 'POST_NOT_FOUND');
     }
-};
 
-// Get all posts by user ID
-const getPostsByUserId = async (req, res) => {
-    try {
-        const userId = req.params.userId; // Assuming the logged-in user's ID is attached to req.user
-        console.log('profile posts for id', userId)
-        // Check if user exists
-        const user = await User.findByPk(userId);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
+    // Format response with counts
+    const response = {
+        id: post.id,
+        content: post.content,
+        createdAt: post.createdAt,
+        updatedAt: post.updatedAt,
+        user: post.User,
+        reportCount: post.Reports ? post.Reports.length : 0,
+        likeCount: post.Likes ? post.Likes.length : 0
+    };
 
-        // Fetch all posts created by the user
-        const posts = await UserPost.findAll({
-            where: { userId: userId },
-            include: {
-                model: User,
-                attributes: ['username'], // Only return the username
-            },
-            attributes: ['id', 'createdAt', 'content'], // Return post-specific fields
-        });
+    res.status(200).json({
+        success: true,
+        data: response
+    });
+});
 
-        // Return the user's posts
-        return res.status(200).json(posts);
-    } catch (error) {
-        console.error('Error fetching posts by user ID:', error);
-        return res.status(500).json({ message: 'Server error' });
+// ============================================
+// Get Posts by User ID
+// ============================================
+
+/**
+ * GET /posts/user/:userId
+ * Get all posts by a specific user
+ */
+const getPostsByUserId = asyncHandler(async (req, res) => {
+    const { userId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = (page - 1) * limit;
+
+    logger.debug('Fetching posts by user ID', { userId, page, limit });
+
+    // Check if user exists
+    const user = await User.findByPk(userId);
+    if (!user) {
+        throw new AppError('User not found', 404, 'USER_NOT_FOUND');
     }
-};
 
+    // Fetch paginated posts created by the user
+    const { count, rows: posts } = await UserPost.findAndCountAll({
+        where: { userId },
+        include: {
+            model: User,
+            attributes: ['id', 'username', 'gender']
+        },
+        order: [['createdAt', 'DESC']],
+        limit,
+        offset
+    });
 
-// Update a post
-const updatePost = async (req, res) => {
-    try {
-        const { postId } = req.params;
-        const { content } = req.body;
-
-        // Find post by ID
-        const post = await UserPost.findByPk(postId);
-
-        if (!post) {
-            return res.status(404).json({ message: 'Post not found' });
+    res.status(200).json({
+        success: true,
+        data: posts,
+        user: {
+            id: user.id,
+            username: user.username,
+            gender: user.gender
+        },
+        pagination: {
+            total: count,
+            page,
+            limit,
+            totalPages: Math.ceil(count / limit)
         }
+    });
+});
 
-        // Update the post content
-        post.content = content;
-        await post.save();
+// ============================================
+// Update Post
+// ============================================
 
-        return res.status(200).json({ message: 'Post updated', post });
-    } catch (error) {
-        console.error('Error updating post:', error);
-        return res.status(500).json({ message: 'Server error' });
+/**
+ * PUT /posts/:postId
+ * Update post content
+ */
+const updatePost = asyncHandler(async (req, res) => {
+    const { postId } = req.params;
+    const { content } = req.body;
+    const userId = req.user.id; // From auth middleware
+
+    logger.info('Updating post', { postId, userId });
+
+    // Validate content
+    if (!content || content.trim().length === 0) {
+        throw new AppError('Post content cannot be empty', 400, 'EMPTY_CONTENT');
     }
-};
 
-// Delete a post
-const deletePost = async (req, res) => {
-    try {
-        const { postId } = req.params;
+    if (content.length > 5000) {
+        throw new AppError('Post content cannot exceed 5000 characters', 400, 'CONTENT_TOO_LONG');
+    }
 
-        // Find the post
-        const post = await UserPost.findByPk(postId);
-        if (!post) {
-            return res.status(404).json({ message: 'Post not found' });
+    const post = await UserPost.findByPk(postId);
+
+    if (!post) {
+        throw new AppError('Post not found', 404, 'POST_NOT_FOUND');
+    }
+
+    // Check ownership or admin status
+    if (post.userId !== userId && !req.user.isAdmin) {
+        throw new AppError('You do not have permission to update this post', 403, 'FORBIDDEN');
+    }
+
+    post.content = content.trim();
+    await post.save();
+
+    // Fetch updated post with user data
+    const updatedPost = await UserPost.findByPk(postId, {
+        include: {
+            model: User,
+            attributes: ['id', 'username', 'gender']
         }
+    });
 
-        // Delete the post
-        await post.destroy();
-        return res.status(200).json({ message: 'Post deleted' });
-    } catch (error) {
-        console.error('Error deleting post:', error);
-        return res.status(500).json({ message: 'Server error' });
+    logger.info('Post updated successfully', { postId });
+
+    res.status(200).json({
+        success: true,
+        message: 'Post updated successfully',
+        data: updatedPost
+    });
+});
+
+// ============================================
+// Delete Post
+// ============================================
+
+/**
+ * DELETE /posts/:postId
+ * Delete a post (soft delete)
+ */
+const deletePost = asyncHandler(async (req, res) => {
+    const { postId } = req.params;
+    const userId = req.user.id; // From auth middleware
+
+    logger.info('Deleting post', { postId, userId });
+
+    const post = await UserPost.findByPk(postId);
+
+    if (!post) {
+        throw new AppError('Post not found', 404, 'POST_NOT_FOUND');
     }
-};
+
+    // Check ownership or admin status
+    if (post.userId !== userId && !req.user.isAdmin) {
+        throw new AppError('You do not have permission to delete this post', 403, 'FORBIDDEN');
+    }
+
+    await post.destroy(); // Soft delete
+
+    logger.info('Post deleted successfully', { postId });
+
+    res.status(200).json({
+        success: true,
+        message: 'Post deleted successfully'
+    });
+});
+
+// ============================================
+// Search Posts
+// ============================================
+
+/**
+ * GET /posts/search?q=query
+ * Search posts by content
+ */
+const searchPosts = asyncHandler(async (req, res) => {
+    const { q } = req.query;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = (page - 1) * limit;
+
+    if (!q || q.trim().length === 0) {
+        throw new AppError('Search query is required', 400, 'EMPTY_QUERY');
+    }
+
+    logger.debug('Searching posts', { query: q, page, limit });
+
+    const { count, rows: posts } = await UserPost.findAndCountAll({
+        where: {
+            content: {
+                [Op.iLike]: `%${q}%` // Case-insensitive search
+            }
+        },
+        include: {
+            model: User,
+            attributes: ['id', 'username', 'gender']
+        },
+        order: [['createdAt', 'DESC']],
+        limit,
+        offset
+    });
+
+    res.status(200).json({
+        success: true,
+        data: posts,
+        pagination: {
+            total: count,
+            page,
+            limit,
+            totalPages: Math.ceil(count / limit)
+        }
+    });
+});
 
 module.exports = {
     createPost,
@@ -170,4 +351,5 @@ module.exports = {
     getPostsByUserId,
     updatePost,
     deletePost,
+    searchPosts
 };

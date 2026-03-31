@@ -1,208 +1,364 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login - Anonymous Tales</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <style>
-    /* Full-page container */
-    body {
-      background-image: url('img/cover_image.jpg'); /* Use your background image */
-      background-size: cover;
-      background-position: center;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-
-    /* Layout container */
-    .layout-container {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      width: 100%;
-      max-width: 1200px;
-      padding: 20px;
-    }
-
-    /* Container for the form */
-    .login-container {
-      background-color: rgba(255, 255, 255, 0.85); /* Opacity effect */
-      border-radius: 10px;
-      padding: 40px;
-      width: 400px;
-      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-      margin-right: 100px;
-    }
-
-    /* Form styling */
-    .form-floating {
-      margin-bottom: 20px;
-    }
-
-    /* Typing text container */
-    .typing-container {
-      max-width: 500px;
-      font-family: 'Courier', monospace;
-      color: white;
-      text-align: left;
-    }
-
-    /* Typing effect */
-    .typing-text {
-      font-size: 1.5rem;
-      border-right: 2px solid white;
-      white-space: nowrap;
-      overflow: hidden;
-    }
-
-    /* Blinking cursor animation */
-    @keyframes blink-cursor {
-      from { border-right-color: white; }
-      to { border-right-color: transparent; }
-    }
-
-    .typing-text {
-      animation: blink-cursor 0.7s steps(44) infinite;
-    }
-
-    /* Adjust heading fonts */
-    .typing-heading {
-      font-size: 2rem;
-    }
-
-    .typing-subheading {
-      font-size: 1.25rem;
-    }
-
-    /* Mobile responsiveness */
-    @media (max-width: 768px) {
-      .layout-container {
-        flex-direction: column;
-        align-items: center;
-        padding: 0;
-      }
-      .typing-container {
-        text-align: center;
-        margin-bottom: 20px;
-      }
-      .login-container {
-        margin-right: 0;
-      }
-    }
-  </style>
-  <script src="/splannes_routerjs/router.js"></script>
-  <script>
-    document.addEventListener("load",function(){
-      // window.location.href="tales.html"
-    });
-  </script>
-</head>
-<body>
-  <!-- Layout Container for typing text and form -->
-  <div class="layout-container">
-    <!-- Typing Effect Container -->
-    <div class="typing-container">
-      <h1 class="typing-heading"></h1>
-      <h4 class="typing-subheading"></h4>
-    </div>
-
-    <!-- Login Container -->
-    <div class="login-container">
-      <h2 class="text-center">Login</h2>
-      <form id="login-form">
-        <div class="form-floating mb-3">
-          <input type="email" class="form-control" id="email" placeholder="Email" required>
-          <label for="email">Email</label>
-        </div>
-        <div class="form-floating mb-3">
-          <input type="password" class="form-control" id="password" placeholder="Password" required>
-          <label for="password">Password</label>
-        </div>
-        <div class="d-grid">
-          <button class="btn btn-primary btn-block" type="submit">Login</button>
-        </div>
-        <div class="text-center mt-3">
-          <span>Don't have an account? <a class=" " href="../index.html">Sign Up</a></span>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- JavaScript for typing effect -->
-  <script>
-
-    const mainHeading = "Anonymous Tales";
-    const subHeading = "Share secrets, get advice and chat with the -Anonymous";
-    const typingSpeed = 100; // Adjust typing speed here
-
-    function typeText(element, text, callback) {
-      let i = 0;
-      function typing() {
-        if (i < text.length) {
-          element.innerHTML += text.charAt(i);
-          i++;
-          setTimeout(typing, typingSpeed);
-        } else if (callback) {
-          callback();
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Anonymous Tales</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Full-page container */
+        body {
+            background-image: url('img/cover_image.jpg');
+            background-size: cover;
+            background-position: center;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            font-family: 'Arial', sans-serif;
+            padding: 20px;
         }
-      }
-      typing();
-    }
 
-    // Typing the main heading and then the subheading
-    typeText(document.querySelector('.typing-heading'), mainHeading, function() {
-      setTimeout(function() {
-        typeText(document.querySelector('.typing-subheading'), subHeading);
-      }, 500); // Delay before typing the subheading
-    });
+        /* Layout container */
+        .layout-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 1200px;
+            padding: 20px;
+        }
 
-    // Handle form submission using Fetch API
-const form = document.getElementById('login-form');
-form.addEventListener('submit', async function(event) {
-  event.preventDefault(); // Prevent the default form submission behavior
+        /* Container for the form */
+        .login-container {
+            background-color: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
 
-  // Get the email and password values from the form
-  const email = document.getElementById('email').value; 
-  const password = document.getElementById('password').value;
+        .login-container h2 {
+            color: #2a9d8f;
+            margin-bottom: 25px;
+        }
 
-  // Debugging: alert the email to ensure it's being captured correctly
-  alert(`Email: ${email}`);
+        /* Form styling */
+        .form-floating {
+            margin-bottom: 20px;
+        }
 
-  try {
-    // Make a POST request to the login endpoint
-    const response = await fetch('../login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json' // Set the content type to JSON
-      },
-      body: JSON.stringify({ email, password }) // Convert the data to JSON
-    });
+        .form-control:focus {
+            border-color: #2a9d8f;
+            box-shadow: 0 0 0 0.2rem rgba(42, 157, 143, 0.25);
+        }
 
-    // Check if the response status is OK (200-299)
-    if (!response.ok) {
-      // If not OK, throw an error to handle it in the catch block
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Login failed. Please try again.'); // Provide a default error message
-    }
+        /* Button styling */
+        .btn-primary {
+            background-color: #2a9d8f;
+            border-color: #2a9d8f;
+            width: 100%;
+            padding: 12px;
+            font-size: 1.1rem;
+        }
 
-    // Parse the JSON response from the server
-    const data = await response.json();
+        .btn-primary:hover {
+            background-color: #21867a;
+            border-color: #21867a;
+        }
 
-    // If login is successful, store the token and redirect
-    alert('Login successful!');
-    localStorage.setItem('authToken', data.token); // Store the token in local storage
-    window.location.href = '/homepage.html'; // Redirect to the homepage
+        .btn-primary:disabled {
+            background-color: #6c757d;
+            border-color: #6c757d;
+            cursor: not-allowed;
+        }
 
-  } catch (error) {
-    // Handle any errors that occurred during the fetch or response parsing
-    alert(`An error occurred: ${error.message}`);
-  }
-});
+        /* Loading spinner */
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ffffff;
+            border-top: 2px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
 
-  </script>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Alert styles */
+        .alert {
+            display: none;
+            margin-bottom: 20px;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        /* Typing text container */
+        .typing-container {
+            max-width: 500px;
+            font-family: 'Courier', monospace;
+            color: white;
+            text-align: left;
+        }
+
+        /* Typing effect */
+        .typing-text {
+            font-size: 1.5rem;
+            border-right: 2px solid white;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        /* Blinking cursor animation */
+        @keyframes blink-cursor {
+            from { border-right-color: white; }
+            to { border-right-color: transparent; }
+        }
+
+        .typing-text {
+            animation: blink-cursor 0.7s steps(44) infinite;
+        }
+
+        /* Adjust heading fonts */
+        .typing-heading {
+            font-size: 2rem;
+        }
+
+        .typing-subheading {
+            font-size: 1.25rem;
+        }
+
+        .signup-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .signup-link a {
+            color: #2a9d8f;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .signup-link a:hover {
+            text-decoration: underline;
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .layout-container {
+                flex-direction: column;
+                align-items: center;
+                padding: 0;
+            }
+            
+            .typing-container {
+                display: none;
+            }
+            
+            .login-container {
+                margin: 0 10px;
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="layout-container">
+        <!-- Typing Animation Section -->
+        <div class="typing-container d-none d-md-block">
+            <h1 class="typing-heading typing-text"></h1>
+            <p class="typing-subheading"></p>
+        </div>
+
+        <!-- Login Form -->
+        <div class="login-container">
+            <h2 class="text-center">Welcome Back</h2>
+            
+            <!-- Alert Messages -->
+            <div id="alertSuccess" class="alert alert-success" role="alert"></div>
+            <div id="alertError" class="alert alert-danger" role="alert"></div>
+            
+            <form id="loginForm" novalidate>
+                <div class="form-floating">
+                    <input type="email" class="form-control" id="email" placeholder="name@example.com" required>
+                    <label for="email">Email address</label>
+                </div>
+                
+                <div class="form-floating">
+                    <input type="password" class="form-control" id="password" placeholder="Password" required>
+                    <label for="password">Password</label>
+                </div>
+
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="rememberMe">
+                    <label class="form-check-label" for="rememberMe">
+                        Remember me
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="loginBtn">
+                    <span class="spinner" id="loginSpinner"></span>
+                    <span id="loginBtnText">Sign In</span>
+                </button>
+            </form>
+
+            <div class="signup-link">
+                <p>Don't have an account? <a href="index.html">Sign Up</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // ============================================
+        // Typing Animation
+        // ============================================
+        const mainHeading = "Welcome to Anonymous Tales";
+        const subHeading = "Share your story. Stay anonymous. Connect with others.";
+        const typingSpeed = 100;
+
+        function typeText(element, text, callback) {
+            let i = 0;
+            element.innerHTML = '';
+            function typing() {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i);
+                    i++;
+                    setTimeout(typing, typingSpeed);
+                } else if (callback) {
+                    callback();
+                }
+            }
+            typing();
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            typeText(document.querySelector('.typing-heading'), mainHeading, function() {
+                setTimeout(function() {
+                    typeText(document.querySelector('.typing-subheading'), subHeading);
+                }, 500);
+            });
+
+            // Check for stored credentials
+            const storedEmail = localStorage.getItem('rememberedEmail');
+            if (storedEmail) {
+                document.getElementById('email').value = storedEmail;
+                document.getElementById('rememberMe').checked = true;
+            }
+        });
+
+        // ============================================
+        // Alert Functions
+        // ============================================
+        function showAlert(type, message) {
+            const alertId = type === 'success' ? 'alertSuccess' : 'alertError';
+            const alertEl = document.getElementById(alertId);
+            alertEl.textContent = message;
+            alertEl.classList.add('show');
+            
+            setTimeout(() => {
+                alertEl.classList.remove('show');
+            }, 5000);
+        }
+
+        function hideAlerts() {
+            document.getElementById('alertSuccess').classList.remove('show');
+            document.getElementById('alertError').classList.remove('show');
+        }
+
+        // ============================================
+        // Button State Management
+        // ============================================
+        function setButtonLoading(buttonId, spinnerId, textId, loadingText) {
+            const btn = document.getElementById(buttonId);
+            const spinner = document.getElementById(spinnerId);
+            const text = document.getElementById(textId);
+            
+            btn.disabled = true;
+            spinner.style.display = 'inline-block';
+            text.textContent = loadingText;
+        }
+
+        function setButtonReady(buttonId, spinnerId, textId, readyText) {
+            const btn = document.getElementById(buttonId);
+            const spinner = document.getElementById(spinnerId);
+            const text = document.getElementById(textId);
+            
+            btn.disabled = false;
+            spinner.style.display = 'none';
+            text.textContent = readyText;
+        }
+
+        // ============================================
+        // Login Form Submission
+        // ============================================
+        document.getElementById('loginForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            hideAlerts();
+
+            const email = document.getElementById('email').value.trim().toLowerCase();
+            const password = document.getElementById('password').value;
+            const rememberMe = document.getElementById('rememberMe').checked;
+
+            // Basic validation
+            if (!email || !password) {
+                showAlert('error', 'Please enter both email and password');
+                return;
+            }
+
+            // Disable button and show loading
+            setButtonLoading('loginBtn', 'loginSpinner', 'loginBtnText', 'Signing In...');
+
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // Store token
+                    localStorage.setItem('token', data.data.token);
+                    localStorage.setItem('user', JSON.stringify(data.data.user));
+
+                    // Handle remember me
+                    if (rememberMe) {
+                        localStorage.setItem('rememberedEmail', email);
+                    } else {
+                        localStorage.removeItem('rememberedEmail');
+                    }
+
+                    showAlert('success', 'Login successful! Redirecting...');
+                    
+                    // Redirect after a short delay
+                    setTimeout(() => {
+                        window.location.href = 'homepage.html';
+                    }, 1000);
+                } else {
+                    showAlert('error', data.message || 'Invalid email or password');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('error', 'Network error. Please check your connection and try again.');
+            } finally {
+                setButtonReady('loginBtn', 'loginSpinner', 'loginBtnText', 'Sign In');
+            }
+        });
+    </script>
 </body>
 </html>

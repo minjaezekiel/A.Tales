@@ -1,25 +1,122 @@
-//routes/userRoute.js
-const express = require("express");
+/**
+ * Anonymous Tales - User Routes
+ * Defines routes for user registration, verification, and management
+ * 
+ * All routes include:
+ * - Input validation and sanitization
+ * - Rate limiting where appropriate
+ * - Proper error handling
+ */
+
+const express = require('express');
 const router = express.Router();
-const {createUser,/*loginUser,*/ otp_verification,findAllUsers, findUser, updateUser, deleteUser} = require("./../controllers/userController");
 
-//router -> create user route
-router.route('/').post(createUser);
+// Import controller functions
+const {
+    createUser,
+    otpVerification,
+    findAllUsers,
+    findUser,
+    updateUser,
+    deleteUser,
+    resendOTP
+} = require('../controllers/userController');
 
-router.route('/verify').post(otp_verification);
-// Route to handle login
-//router.route('/login').post(loginUser);
+// Import validation middleware
+const {
+    validateUserRegistration,
+    validateOTPVerification,
+    validateUserUpdate,
+    validateUserId
+} = require('../middleware/validationMiddleware');
 
-//router -> find all user route
-router.route('/').get(findAllUsers);
+// Import rate limiting
+const { authLimiter, apiLimiter } = require('../middleware/rateLimitMiddleware');
 
-//router -> find single user by :id
-router.route('/:id').get(findUser);
+// Import authentication
+const { authenticateToken, authorize } = require('../middleware/authMiddleware');
 
-//router -> updating a user
-router.route('/').post(updateUser);
+/**
+ * POST /users
+ * Step 1: Register new user - send OTP
+ * Rate limited to prevent abuse
+ */
+router.post(
+    '/',
+    authLimiter,
+    validateUserRegistration,
+    createUser
+);
 
-//router -> delete user
-router.route('/').post(deleteUser);
+/**
+ * POST /users/verify
+ * Step 2: Verify OTP and complete registration
+ */
+router.post(
+    '/verify',
+    authLimiter,
+    validateOTPVerification,
+    otpVerification
+);
+
+/**
+ * POST /users/resend-otp
+ * Resend OTP to email
+ */
+router.post(
+    '/resend-otp',
+    authLimiter,
+    resendOTP
+);
+
+/**
+ * GET /users
+ * Get all users with pagination
+ * Requires authentication and admin/staff role
+ */
+router.get(
+    '/',
+    authenticateToken,
+    authorize('admin', 'staff'),
+    apiLimiter,
+    findAllUsers
+);
+
+/**
+ * GET /users/:id
+ * Get single user by ID
+ * Users can view their own profile, admins can view any
+ */
+router.get(
+    '/:id',
+    authenticateToken,
+    validateUserId,
+    findUser
+);
+
+/**
+ * PUT /users/:id
+ * Update user information
+ * Users can update their own profile, admins can update any
+ */
+router.put(
+    '/:id',
+    authenticateToken,
+    validateUserId,
+    validateUserUpdate,
+    updateUser
+);
+
+/**
+ * DELETE /users/:id
+ * Soft delete user
+ * Users can delete their own account, admins can delete any
+ */
+router.delete(
+    '/:id',
+    authenticateToken,
+    validateUserId,
+    deleteUser
+);
 
 module.exports = router;

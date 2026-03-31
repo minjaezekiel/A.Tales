@@ -281,7 +281,7 @@
         }
 
         // Retrieve the token from localStorage
-        const token = localStorage.getItem('authToken');
+        const token = localStorage.getItem('token');//changed from authToken -> token
 
         if (token) {
           // Decode the token to get user data

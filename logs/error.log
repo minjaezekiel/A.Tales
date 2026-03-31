@@ -1,0 +1,17 @@
+{"level":"error","message":"FATAL ERROR: JWT_SECRET is not defined in environment variables","service":"anonymoustales","timestamp":"2026-03-31 16:59:25"}
+{"error":"SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string","level":"error","message":"Database synchronization failed","service":"anonymoustales","timestamp":"2026-03-31 16:59:25"}
+{"level":"error","message":"FATAL ERROR: JWT_SECRET is not defined in environment variables","service":"anonymoustales","timestamp":"2026-03-31 16:59:30"}
+{"error":"SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string","level":"error","message":"Database synchronization failed","service":"anonymoustales","timestamp":"2026-03-31 16:59:30"}
+{"level":"error","message":"FATAL ERROR: JWT_SECRET is not defined in environment variables","service":"anonymoustales","timestamp":"2026-03-31 16:59:46"}
+{"level":"error","message":"FATAL ERROR: JWT_SECRET is not defined in environment variables","service":"anonymoustales","timestamp":"2026-03-31 17:02:53"}
+{"error":"SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string","level":"error","message":"Database synchronization failed","service":"anonymoustales","timestamp":"2026-03-31 17:02:53"}
+{"level":"error","message":"FATAL ERROR: JWT_SECRET is not defined in environment variables","service":"anonymoustales","timestamp":"2026-03-31 17:03:16"}
+{"error":"SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string","level":"error","message":"Database synchronization failed","service":"anonymoustales","timestamp":"2026-03-31 17:03:16"}
+{"level":"error","message":"FATAL ERROR: JWT_SECRET is not defined in environment variables","service":"anonymoustales","timestamp":"2026-03-31 17:03:43"}
+{"error":"SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string","level":"error","message":"Database synchronization failed","service":"anonymoustales","timestamp":"2026-03-31 17:03:43"}
+{"error":"syntax error at or near \"USING\"","level":"error","message":"Database synchronization failed","service":"anonymoustales","timestamp":"2026-03-31 17:29:13"}
+{"error":"syntax error at or near \"USING\"","level":"error","message":"Database synchronization failed","service":"anonymoustales","timestamp":"2026-03-31 17:29:19"}
+{"error":"syntax error at or near \"USING\"","level":"error","message":"Database synchronization failed","service":"anonymoustales","timestamp":"2026-03-31 17:29:22"}
+{"error":"syntax error at or near \"USING\"","level":"error","message":"Database synchronization failed","service":"anonymoustales","timestamp":"2026-03-31 17:31:46"}
+{"error":"syntax error at or near \"USING\"","level":"error","message":"Database synchronization failed","service":"anonymoustales","timestamp":"2026-03-31 17:31:55"}
+{"error":"syntax error at or near \"USING\"","level":"error","message":"Database synchronization failed","service":"anonymoustales","timestamp":"2026-03-31 17:38:46"}
